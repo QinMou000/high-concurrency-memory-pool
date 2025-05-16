@@ -1,11 +1,5 @@
 #pragma once
-#include <iostream>
-#include <vector>
-#include <time.h>
-
-using std::cin;
-using std::cout;
-using std::endl;
+#include "Common.h"
 
 template <class T>
 class ObjectPool
@@ -26,7 +20,8 @@ public:
             if (_remainByte < sizeof(T)) // 如果剩余内存大小已经小于T所需内存大小，剩下的就不要了，直接重开一块内存
             {
                 _remainByte = 8 * 1024; // 8KB
-                _memory = (char *)malloc(_remainByte);
+                // _memory = (char *)malloc(_remainByte);
+                _memory = (char *)SysAlloc(_remainByte >> 13);
                 if (_memory == nullptr)
                     throw std::bad_alloc(); // 抛出一个对象
             }
@@ -38,7 +33,6 @@ public:
             _memory += ObjSize;
             _remainByte -= ObjSize;
         }
-
         new (obj) T; // 定位new
         // new (place_address) Type;
         // new (place_address) Type(initializer-list);
