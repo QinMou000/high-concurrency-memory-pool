@@ -14,3 +14,6 @@ public:
 private:
     FreeList _FreeLists[MAX_LIST]; // 哈希桶，下面挂不同大小的内存块
 };
+
+// 用TLS实现对象线程隔离
+static thread_local ThreadCache *pTLSThreadCache = nullptr;

@@ -11,7 +11,7 @@ using std::endl;
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
 
-void *SysAlloc(size_t kpage)
+static void *SysAlloc(size_t kpage)
 {
 #if defined(_WIN32)
     // WIN32
@@ -118,7 +118,7 @@ public:
         // 右移 align_shift 位，这相当于把结果除以 2^align_shift，最终得到的是向上舍入后的对齐值。
         //      减 1 操作：最终结果要减去 1。
 
-        return (bytes + (1 << aligan_shift) >> aligan_shift) - 1; // 很巧妙的糕手写法
+        return ((bytes + (1 << aligan_shift) - 1) >> aligan_shift) - 1; // 很巧妙的糕手写法
     }
 
     static inline size_t Index(size_t bytes) // 给我你要开辟的内存大小，返回给你应该在几号桶取空间
@@ -149,7 +149,7 @@ public:
         }
         else
         {
-            assert(true);
+            return MAX_LIST;
         }
     }
 };
