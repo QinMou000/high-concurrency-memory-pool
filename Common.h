@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <iostream>
 #include <vector>
+#include <mutex>
+#include <thread>
 #include <time.h>
 #include <windows.h>
 
@@ -10,6 +12,14 @@ using std::endl;
 
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
+
+#ifdef _WIN64
+typedef unsigned long long PAGE_ID;
+#elif _WIN32
+typedef size_t PAGE_ID;
+#else
+// Linux TODO
+#endif // _WIN32
 
 static void *SysAlloc(size_t kpage)
 {
@@ -152,4 +162,58 @@ public:
             return MAX_LIST;
         }
     }
+};
+
+// 管理多个连续页的大块内存跨度结构
+struct Span
+{
+    PAGE_ID _pageId = 0; // 页号
+    size_t _n = 0;       // 页数
+
+    Span *_prev = nullptr; // 双向链表指针
+    Span *_next = nullptr; // 双向链表指针
+
+    size_t _usecount = 0; // 被切成的小块内存被分配给ThreadCache的计数
+
+    void *_freeList = nullptr; // 切好的小块内存自由链表
+};
+
+class SpanList // 带头双向循环链表
+{
+public:
+    SpanList()
+    {
+        _head = new Span;
+        _head->_next = _head;
+        _head->_prev = _head;
+    }
+
+    void Insert(Span *pos, Span *newSpan)
+    {
+        assert(pos);
+        assert(newSpan);
+        Span *prev = pos->_prev;
+
+        // prev <-> newspan <-> pos
+        prev->_next = newSpan;
+        newSpan->_prev = prev;
+        newSpan->_next = pos;
+        pos->_prev = newSpan;
+    }
+    void Erase(Span *pos)
+    {
+        assert(pos);
+        assert(pos != _head); // 不能删除哨兵位的头节点
+
+        Span *prev = pos->_prev;
+        Span *next = pos->_next;
+
+        // prev - pos - next
+        prev->_next = next;
+        next->_prev = prev;
+    }
+
+private:
+    Span *_head;
+    std::mutex _mtx; // 每一个Span里面都有一把锁 叫做桶锁 支持多线程访问不同的桶
 };

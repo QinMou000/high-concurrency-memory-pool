@@ -26,6 +26,8 @@ int main()
     std::thread thread2(alloc2);
     thread2.join();
 
+    std::cout << sizeof(PAGE_ID) << std::endl;
+
     // TestObjectPool();
     // cout << SizeClass::RoundUp(2) << endl;
     // cout << SizeClass::RoundUp(5) << endl;

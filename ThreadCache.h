@@ -16,4 +16,6 @@ private:
 };
 
 // 用TLS实现对象线程隔离
+// 每个线程首次访问 pTLSThreadCache 时，会创建一个独立的指针副本（初始为 nullptr）。
+// 线程A修改自己的副本不会影响线程B的副本。
 static thread_local ThreadCache *pTLSThreadCache = nullptr;
