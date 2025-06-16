@@ -1,14 +1,22 @@
 #pragma once
-#include <assert.h>
 #include <iostream>
 #include <vector>
+#include <algorithm>
+
+#include <time.h>
+#include <assert.h>
+
 #include <mutex>
 #include <thread>
-#include <time.h>
-#include <windows.h>
 
 using std::cout;
 using std::endl;
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+
+#endif
 
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
@@ -58,14 +66,24 @@ public:
         _freeList = NextObj(obj);
         return obj;
     }
-
+    // 支持多个内存块插入
+    void pushRange(void *start, void *end)
+    {
+        NextObj(end) = _freeList; // 将这一段内存块 头插
+        _freeList = start;
+    }
     bool IsEmpty()
     {
         return _freeList == nullptr;
     }
+    size_t &MaxSize()
+    {
+        return _MaxSize;
+    }
 
 private:
     void *_freeList = nullptr;
+    size_t _MaxSize = 1;
 };
 
 class SizeClass
@@ -162,6 +180,19 @@ public:
             return MAX_LIST;
         }
     }
+    static size_t NumMoveSize(size_t size)
+    {
+        assert(size > 0);
+        size_t num = MAX_BYTES / size;
+        // [2,512]是每次获取的上下限
+        // 小对象多给
+        // 大对象少给
+        if (num < 2)
+            num = 2;
+        if (num > 512)
+            num = 512;
+        return num;
+    }
 };
 
 // 管理多个连续页的大块内存跨度结构
@@ -215,5 +246,7 @@ public:
 
 private:
     Span *_head;
+
+public:
     std::mutex _mtx; // 每一个Span里面都有一把锁 叫做桶锁 支持多线程访问不同的桶
 };
