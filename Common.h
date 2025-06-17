@@ -20,6 +20,7 @@ using std::endl;
 
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
+static const size_t NPAGES = 128;
 
 #ifdef _WIN64
 typedef unsigned long long PAGE_ID;
