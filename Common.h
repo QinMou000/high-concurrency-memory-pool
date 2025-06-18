@@ -21,6 +21,7 @@ using std::endl;
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
 static const size_t NPAGES = 128;
+static const size_t PAGE_SHIFT = 13; // 2^13 = 8 * 1024 -- 8K
 
 #ifdef _WIN64
 typedef unsigned long long PAGE_ID;
@@ -181,7 +182,7 @@ public:
             return MAX_LIST;
         }
     }
-    static size_t NumMoveSize(size_t size)
+    static size_t NumMoveSize(size_t size /*单个对象大小*/) // 一个thread一次向centralcache获取多少个内存块
     {
         assert(size > 0);
         size_t num = MAX_BYTES / size;
@@ -193,6 +194,16 @@ public:
         if (num > 512)
             num = 512;
         return num;
+    }
+    static size_t NumMovePage(size_t size /*单个对象大小*/) // 一次要向PageCache申请多少页的内存
+    {
+        size_t num = NumMoveSize(size); // 算出获取内存块的上限
+        size_t npage = num * size;      // 算出获取内存块上限的总字节数
+
+        npage >>= PAGE_SHIFT; // 算出需要多少页
+        if (npage == 0)
+            npage = 1;
+        return npage;
     }
 };
 
@@ -219,7 +230,18 @@ public:
         _head->_next = _head;
         _head->_prev = _head;
     }
-
+    Span *Begin()
+    {
+        return _head->_next;
+    }
+    Span *End()
+    {
+        return _head;
+    }
+    void PushFront(Span *newspan)
+    {
+        Insert(Begin(), newspan);
+    }
     void Insert(Span *pos, Span *newSpan)
     {
         assert(pos);

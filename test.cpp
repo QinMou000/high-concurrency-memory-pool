@@ -21,10 +21,10 @@ void alloc2()
 
 int main()
 {
-    std::thread thread1(alloc1);
-    thread1.join();
-    std::thread thread2(alloc2);
-    thread2.join();
+    // std::thread thread1(alloc1);
+    // thread1.join();
+    // std::thread thread2(alloc2);
+    // thread2.join();
 
     std::cout << sizeof(PAGE_ID) << std::endl;
 

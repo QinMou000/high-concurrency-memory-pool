@@ -16,8 +16,7 @@ private:
     PageCache() {}
     PageCache(const PageCache &) = delete;
 
-private:
     SpanList spanLists[NPAGES]; // 每一个span下面放的是对应序号的页大小 数组第一个元素span放的就是一页的内存大小
-
+public:
     static PageCache _sInst; // 单例
 };
