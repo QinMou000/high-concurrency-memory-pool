@@ -25,7 +25,7 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     // 不用加锁了 这里只是切分 没有访问桶资源 spanlist._mtx.lock();
 
     char *start = (char *)(newspan->_pageId << PAGE_SHIFT); // 根据页号算出内存起始地址
-    size_t bytes = newspan->_n >> PAGE_SHIFT;               // 根据有页数算出有多少字节
+    size_t bytes = newspan->_n << PAGE_SHIFT;               // 根据有页数算出有多少字节
     char *end = start + bytes;                              // 算出末尾地址
 
     newspan->_freeList = start;                // 先将整个内存块的 start 给给 _freelist 指针
