@@ -16,7 +16,8 @@ private:
     PageCache() {}
     PageCache(const PageCache &) = delete;
 
-    SpanList spanLists[NPAGES]; // 每一个span下面放的是对应序号的页大小 数组第一个元素span放的就是一页的内存大小
+    SpanList _spanLists[NPAGES]; // 每一个span下面放的是对应序号的页大小 数组第二个元素的span放的就是一页的内存大小
 public:
+    std::mutex _pageMutex;
     static PageCache _sInst; // 单例
 };

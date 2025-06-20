@@ -20,7 +20,7 @@ using std::endl;
 
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
-static const size_t NPAGES = 128;
+static const size_t NPAGES = 129;
 static const size_t PAGE_SHIFT = 13; // 2^13 = 8 * 1024 -- 8K
 
 #ifdef _WIN64
@@ -47,7 +47,16 @@ static void *SysAlloc(size_t kpage)
 }
 
 // 根据32/64位机器，将obj的前4/8个byte拿到
-#define NextObj(obj) (*(void **)(obj))
+// #define NextObj(obj) (*(void **)(obj))
+// C++尽量不要用宏 会导致很多问题 如引用
+// 尽量都用函数
+
+// 没有 static 时 每个包含该头文件的源文件都会生成一个具有外部链接的函数定义
+// 链接器在链接时发现多个同名函数定义 从而报错
+static void *&NextObj(void *obj)
+{
+    return *(void **)obj;
+}
 
 class FreeList // 自由链表
 {
@@ -241,6 +250,16 @@ public:
     void PushFront(Span *newspan)
     {
         Insert(Begin(), newspan);
+    }
+    bool Empty()
+    {
+        return _head == _head->_next;
+    }
+    Span *PopFront()
+    {
+        Span *front = _head->_next;
+        Erase(front); // 从列表中摘除这个span
+        return front;
     }
     void Insert(Span *pos, Span *newSpan)
     {

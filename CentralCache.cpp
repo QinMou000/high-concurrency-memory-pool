@@ -13,10 +13,16 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
         else
             it = it->_next; // it 迭代到下一个 Span
     }
-    // 走到下面 表明当前的 _SpanLists 已经没有有空间的 Span 了 要向下一层 PageCache 要
-    Span *newspan = PageCache::GetInstance()->NewSpan(SizeClass::NumMovePage(size)); // 将算出需要多少页内存给给下一层
 
+    // 走到下面 表明当前的 _SpanLists 已经没有有空间的 Span 了 要向下一层 PageCache 要
+    // 先把central cache的锁解除掉 方便其他线程释放内存
+    spanlist._mtx.unlock();
+    PageCache::GetInstance()->_pageMutex.lock(); // 先对 pagecache 加锁
+    Span *newspan = PageCache::GetInstance()->NewSpan(SizeClass::NumMovePage(size)); // 将算出需要多少页内存给给下一层
+    PageCache::GetInstance()->_pageMutex.unlock(); // 对 pagecache 解锁
     // 将得到的大内存块切分成size大小的小内存
+
+    // 不用加锁了 这里只是切分 没有访问桶资源 spanlist._mtx.lock();
 
     char *start = (char *)(newspan->_pageId << PAGE_SHIFT); // 根据页号算出内存起始地址
     size_t bytes = newspan->_n >> PAGE_SHIFT;               // 根据有页数算出有多少字节
@@ -31,6 +37,9 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
         tail = (char *)NextObj(tail);
         start += size;
     }
+
+    // 当切好span后 插入过程需要加锁 因为要访问这个桶
+    spanlist._mtx.lock();
     spanlist.PushFront(newspan); // 将切好内存的 Span 链入 _SpanLists 中
 
     return newspan;
