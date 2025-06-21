@@ -80,12 +80,12 @@ public:
         return obj;
         --_size; // 对总内存块数--
     }
-    void PopRange(void *start, void *end/*输出型参数*/, size_t n)
+    void PopRange(void *start, void *end /*输出型参数*/, size_t n)
     {
-        // 删除链表中 n 个内存块 
+        // 删除链表中 n 个内存块
         assert(n <= _size);
-        void *start = _freeList;
-        void *end = start;
+        start = _freeList;
+        end = start;
 
         for (size_t i = 0; i < n - 1; i++)
             end = NextObj(end);
@@ -251,6 +251,8 @@ struct Span
     size_t _usecount = 0; // 被切成的小块内存被分配给ThreadCache的计数
 
     void *_freeList = nullptr; // 切好的小块内存自由链表
+
+    bool _isUse = false; // 表示当前span是否正在被使用
 };
 
 class SpanList // 带头双向循环链表

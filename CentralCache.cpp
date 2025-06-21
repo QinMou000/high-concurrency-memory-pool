@@ -19,6 +19,7 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     spanlist._mtx.unlock();
     PageCache::GetInstance()->_pageMutex.lock();                                     // 先对 pagecache 加锁
     Span *newspan = PageCache::GetInstance()->NewSpan(SizeClass::NumMovePage(size)); // 将算出需要多少页内存给给下一层
+    newspan->_isUse = true;                                                          // 这个span已经在被使用了！！
     PageCache::GetInstance()->_pageMutex.unlock();                                   // 对 pagecache 解锁
     // 将得到的大内存块切分成size大小的小内存
 
