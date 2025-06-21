@@ -17,9 +17,9 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     // 走到下面 表明当前的 _SpanLists 已经没有有空间的 Span 了 要向下一层 PageCache 要
     // 先把central cache的锁解除掉 方便其他线程释放内存
     spanlist._mtx.unlock();
-    PageCache::GetInstance()->_pageMutex.lock(); // 先对 pagecache 加锁
+    PageCache::GetInstance()->_pageMutex.lock();                                     // 先对 pagecache 加锁
     Span *newspan = PageCache::GetInstance()->NewSpan(SizeClass::NumMovePage(size)); // 将算出需要多少页内存给给下一层
-    PageCache::GetInstance()->_pageMutex.unlock(); // 对 pagecache 解锁
+    PageCache::GetInstance()->_pageMutex.unlock();                                   // 对 pagecache 解锁
     // 将得到的大内存块切分成size大小的小内存
 
     // 不用加锁了 这里只是切分 没有访问桶资源 spanlist._mtx.lock();
@@ -72,4 +72,42 @@ size_t CentralCache::FetchRangeObj(void *&start, void *&end, size_t batchNum, si
 
     _SpanLists[index]._mtx.unlock();
     return actualNum;
+}
+void CentralCache::ReleaseListToSpans(void *start, size_t size)
+{
+    // 算出放在哪个桶下 下标
+    size_t index = SizeClass::Index(size);
+    // 对桶操作 加锁
+    _SpanLists[index]._mtx.lock();
+
+    while (start) // 从 start 开始将每一个内存块都放回 当初取出的 span 里面
+    {
+        void *next = NextObj(start);
+        Span *span = PageCache::GetInstance()->MapObjectToSpan(start); // 获取当前内存块 本应该属于的 span
+
+        // 将当前内存块插入span中
+        NextObj(start) = span->_freeList;
+        span->_freeList = start; // 头插
+
+        // 将usecount-- 表明 内存又回来了一个
+        span->_usecount--;
+
+        if (span->_usecount == 0) // 如果内存全部回来了 即 usecount 等于 0
+        {
+            // 从桶中删除 当前span
+            _SpanLists[index].Erase(span);
+            span->_next = nullptr;
+            span->_prev = nullptr;
+            span->_freeList = nullptr;
+
+            // 将这个 span 交给 PageCache 处理
+            _SpanLists[index]._mtx.unlock();
+            PageCache::GetInstance()->_pageMutex.lock();
+            PageCache::GetInstance()->ReleaseSpanToPageCache(span);
+            PageCache::GetInstance()->_pageMutex.unlock();
+            _SpanLists[index]._mtx.lock();
+        }
+        start = next;
+    }
+    _SpanLists[index]._mtx.unlock();
 }

@@ -12,7 +12,7 @@ public:
     }
     size_t FetchRangeObj(void *&start, void *&end, size_t batchNum, size_t size); // 从中心缓存获取batchNum数量的size大小的内存块
     Span *GetOneSpan(SpanList &spanlist, size_t size);                            // 获取一个非空的Span
-
+    void ReleaseListToSpans(void *start, size_t size);                            // 从 threadCache 那里收来的内存块 放进对应的 span 里面
 private:
     CentralCache() {}                            // 单例模式 把构造设置为私有
     CentralCache(const CentralCache &) = delete; // 拷贝构造 赋值重载都禁掉

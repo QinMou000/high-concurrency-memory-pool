@@ -53,4 +53,23 @@ void ThreadCache::DeAlloc(void *ptr, size_t size)
     // 确定要回收到几号桶里面
     size_t index = SizeClass::Index(size);
     _FreeLists[index].push(ptr);
+
+    // 如果自由链表中的内存大于 向centralcache申请的一个批量大小 就开始释放
+    if (_FreeLists[index].Size() > _FreeLists[index].MaxSize())
+    {
+        ListTooLong(_FreeLists[index], size);
+    }
+}
+
+void ThreadCache::ListTooLong(FreeList list, size_t size) // threadcache中某个自由链表的内存太多了 回收一个批量的内存
+{
+    void *start = nullptr;
+    void *end = nullptr;
+    list.PopRange(start, end, list.MaxSize());
+
+    if (start != end)
+    {
+        // 将内存交给central cache 处理
+        CentralCache::GetInstance()->ReleaseListToSpans(start, size); // 不需要知道 end 遍历到为空即为结束
+    }
 }

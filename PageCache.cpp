@@ -26,6 +26,9 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
 
             _spanLists[nspan->_n].PushFront(nspan); // 将切分后剩下的 nspan 放入对应的桶里面
 
+            for (size_t i = 0; i < kspan->_n; i++) // 建立页号与Span间的映射 方便 centralcache 查找页号与 span 的关系
+                _idSpanMap[kspan->_pageId + i] = kspan;
+
             return kspan;
         }
     // 向堆获取
@@ -39,4 +42,23 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
 
     // 这里设计得很巧妙
     return NewSpan(K); // 递归再调一次 这里的循环判断消耗很小 不用考虑性能问题
+}
+
+Span *PageCache::MapObjectToSpan(void *obj)
+{
+    PAGE_ID id = (int)obj >> PAGE_SHIFT;
+    auto it = _idSpanMap.find(id);
+    if (it != _idSpanMap.end()) // 找到了
+        return it->second;
+    else
+    {
+        assert(false); // 不可能走到这里
+        return nullptr;
+    }
+}
+void ReleaseSpanToPageCache(Span *span)
+{
+    // 向前合并
+
+    // 向后和并
 }

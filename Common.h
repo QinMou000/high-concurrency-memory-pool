@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <unordered_map>
 #include <algorithm>
 
 #include <time.h>
@@ -67,6 +68,7 @@ public:
         // 头插
         obj = NextObj(_freeList);
         _freeList = obj;
+        ++_size; // 对总内存块数++
     }
     void *pop()
     {
@@ -76,6 +78,21 @@ public:
         void *obj = _freeList;
         _freeList = NextObj(obj);
         return obj;
+        --_size; // 对总内存块数--
+    }
+    void PopRange(void *start, void *end/*输出型参数*/, size_t n)
+    {
+        // 删除链表中 n 个内存块 
+        assert(n <= _size);
+        void *start = _freeList;
+        void *end = start;
+
+        for (size_t i = 0; i < n - 1; i++)
+            end = NextObj(end);
+
+        _freeList = NextObj(end);
+        NextObj(end) = nullptr;
+        _size -= n;
     }
     // 支持多个内存块插入
     void pushRange(void *start, void *end)
@@ -91,10 +108,16 @@ public:
     {
         return _MaxSize;
     }
+    size_t Size()
+    {
+        return _size;
+    }
 
 private:
     void *_freeList = nullptr;
     size_t _MaxSize = 1;
+
+    size_t _size; // 记录这个自由链表中的总内存块数
 };
 
 class SizeClass
