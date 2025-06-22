@@ -5,10 +5,26 @@ PageCache PageCache::_sInst;
 Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
 {
     // 断言 K
-    assert(K > 0 && K < NPAGES);
+    assert(K > 0);
+    // 大于 128 页 走系统调用 但是还是以 span 的形式返回
+    if (K >= NPAGES) // 一般都不会走到这一步的 128 页 相当于 1MB 很少有一次申请 1MB 的
+    {
+        void *ptr = SysAlloc(K); // 向堆申请内存
+        Span *span = new Span;
+        span->_pageId = ((PAGE_ID)ptr >> PAGE_SHIFT);
+        span->_n = K;
+        _idSpanMap[span->_pageId] = span; // 只需建立 起始页 与 span 的映射即可
+        return span;
+    }
+
     // 查看当前位置有没有
     if (!_spanLists[K].Empty())
-        return _spanLists[K].PopFront();
+    {
+        Span *span = _spanLists[K].PopFront();
+        for (size_t i = 0; i < span->_n; i++) // 建立页号与Span间的映射 方便 centralcache 查找页号与 span 的关系
+            _idSpanMap[span->_pageId + i] = span;
+        return span;
+    }
 
     // 查看后面位置有没有 切分
     for (int i = K + 1; i < NPAGES; ++i)
@@ -62,6 +78,14 @@ Span *PageCache::MapObjectToSpan(void *obj)
 }
 void PageCache::ReleaseSpanToPageCache(Span *span)
 {
+    if (span->_n >= NPAGES) // 如果大于 129 页
+    {
+        void *ptr = (void *)(span->_pageId << PAGE_SHIFT); // 计算内存块起始地址
+        SysFree(ptr);                                      // 归还系统
+        delete span;                                       // 删除对象
+        return;
+    }
+
     // 向前合并
     while (1)
     {

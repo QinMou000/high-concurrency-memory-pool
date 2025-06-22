@@ -47,6 +47,15 @@ static void *SysAlloc(size_t kpage)
     return ptr;
 }
 
+static void SysFree(void *ptr)
+{
+#ifdef _WIN32
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+    // sbrk unmmap等
+#endif
+}
+
 // 根据32/64位机器，将obj的前4/8个byte拿到
 // #define NextObj(obj) (*(void **)(obj))
 // C++尽量不要用宏 会导致很多问题 如引用
@@ -66,7 +75,8 @@ public:
     {
         assert(obj);
         // 头插
-        obj = NextObj(_freeList);
+        // obj = NextObj(_freeList); BUG
+        NextObj(obj) = _freeList;
         _freeList = obj;
         ++_size; // 对总内存块数++
     }
@@ -77,10 +87,11 @@ public:
 
         void *obj = _freeList;
         _freeList = NextObj(obj);
+        --_size; // 对总内存块数-- // 放到 return 后面了 我是傻叉
+        // 蠢的没边了 博客可以记录一下
         return obj;
-        --_size; // 对总内存块数--
     }
-    void PopRange(void *start, void *end /*输出型参数*/, size_t n)
+    void PopRange(void *&start, void *&end /*输出型参数*/, size_t n)
     {
         // 删除链表中 n 个内存块
         assert(n <= _size);
@@ -95,10 +106,26 @@ public:
         _size -= n;
     }
     // 支持多个内存块插入
-    void pushRange(void *start, void *end)
+    void pushRange(void *start, void *end, size_t n)
     {
         NextObj(end) = _freeList; // 将这一段内存块 头插
         _freeList = start;
+
+        // // 测试验证+条件断点
+        // int i = 0;
+        // void* cur = start;
+        // while (cur)
+        // {
+        // 	cur = NextObj(cur);
+        // 	++i;
+        // }
+
+        // if (n != i)
+        // {
+        // 	int x = 0;
+        // }
+
+        _size += n;
     }
     bool IsEmpty()
     {
@@ -117,7 +144,7 @@ private:
     void *_freeList = nullptr;
     size_t _MaxSize = 1;
 
-    size_t _size; // 记录这个自由链表中的总内存块数
+    size_t _size = 0; // 记录这个自由链表中的总内存块数
 };
 
 class SizeClass
@@ -248,8 +275,8 @@ struct Span
     Span *_prev = nullptr; // 双向链表指针
     Span *_next = nullptr; // 双向链表指针
 
-    size_t _usecount = 0; // 被切成的小块内存被分配给ThreadCache的计数
-
+    size_t _usecount = 0;      // 被切成的小块内存被分配给ThreadCache的计数
+    size_t _objSize = 0;       // 当前 span 切好的内存块大小
     void *_freeList = nullptr; // 切好的小块内存自由链表
 
     bool _isUse = false; // 表示当前span是否正在被使用

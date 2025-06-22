@@ -8,7 +8,7 @@ void *ThreadCache::FetchFromCentralCache(size_t index, size_t size)
     size_t batchNum = std::min(SizeClass::NumMoveSize(size), _FreeLists[index].MaxSize());
     // 最开始不会向中心缓存要太多 如果需求大 maxsize会不断增长 直到上限
     if (_FreeLists[index].MaxSize() == batchNum)
-        _FreeLists[index].MaxSize() += 2;
+        _FreeLists[index].MaxSize() += 1;
 
     // 获取单例 调用fetchrangeobj函数 但span里不一定有那么多 返回实际获取了多少
     void *start = nullptr;
@@ -23,7 +23,7 @@ void *ThreadCache::FetchFromCentralCache(size_t index, size_t size)
     else
     {
         // 插入当前线程的ThreadCache自由链表 并将第一个内存块返回
-        _FreeLists[index].pushRange(NextObj(start), end);
+        _FreeLists[index].pushRange(NextObj(start), end, actualNum - 1);
         return start;
     }
 }
@@ -55,13 +55,13 @@ void ThreadCache::DeAlloc(void *ptr, size_t size)
     _FreeLists[index].push(ptr);
 
     // 如果自由链表中的内存大于 向 centralcache 申请的一个批量大小 就开始释放
-    if (_FreeLists[index].Size() > _FreeLists[index].MaxSize())
+    if (_FreeLists[index].Size() >= _FreeLists[index].MaxSize())
     {
         ListTooLong(_FreeLists[index], size);
     }
 }
 
-void ThreadCache::ListTooLong(FreeList list, size_t size) // threadcache 中某个自由链表的内存太多了 回收一个批量的内存
+void ThreadCache::ListTooLong(FreeList &list, size_t size) // threadcache 中某个自由链表的内存太多了 回收一个批量的内存
 {
     void *start = nullptr;
     void *end = nullptr;

@@ -10,7 +10,7 @@ public:
 
     // 从中心缓存取空间
     void *FetchFromCentralCache(size_t index, size_t size);
-    void ListTooLong(FreeList list, size_t size);
+    void ListTooLong(FreeList &list, size_t size);
 private:
     FreeList _FreeLists[MAX_LIST]; // 哈希桶，下面挂不同大小的内存块
 };

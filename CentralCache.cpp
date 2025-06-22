@@ -20,6 +20,7 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     PageCache::GetInstance()->_pageMutex.lock();                                     // 先对 pagecache 加锁
     Span *newspan = PageCache::GetInstance()->NewSpan(SizeClass::NumMovePage(size)); // 将算出需要多少页内存给给下一层
     newspan->_isUse = true;                                                          // 这个span已经在被使用了！！
+    newspan->_objSize = size;                                                        // 初始化 span 里面 将要被切成的内存块大小
     PageCache::GetInstance()->_pageMutex.unlock();                                   // 对 pagecache 解锁
     // 将得到的大内存块切分成size大小的小内存
 
@@ -32,12 +33,28 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     newspan->_freeList = start;                // 先将整个内存块的 start 给给 _freelist 指针
     start += size;                             // 逻辑上就是将前size个字节切走
     char *tail = (char *)(newspan->_freeList); // 留一个尾 方便尾插
-    while (start != end)
+
+    while (start <= end) // start != end 这是一个BUG
     {
         NextObj(tail) = start;
         tail = (char *)NextObj(tail);
-        start += size;
+        start += size; // 可能会造成死循环 博客可以记录一下
     }
+
+    // // 1、条件断点
+    // // 2、疑似死循环，可以中断程序，程序会在正在运行的地方停下来
+    // int j = 0;
+    // void *cur = newspan->_freeList;
+    // while (cur)
+    // {
+    //     cur = NextObj(cur);
+    //     ++j;
+    // }
+
+    // if (j != (bytes / size))
+    // {
+    //     int x = 0;
+    // }
 
     // 当切好span后 插入过程需要加锁 因为要访问这个桶
     spanlist._mtx.lock();
@@ -70,6 +87,20 @@ size_t CentralCache::FetchRangeObj(void *&start, void *&end, size_t batchNum, si
     span->_freeList = NextObj(end); // 将_freeList 指向 end的下一个位置
     NextObj(end) = nullptr;         // 将end的前4/8字节置空
     span->_usecount += actualNum;   // 使用计数加上 actualNum
+
+    // // 条件断点 DEBUG
+    // int j = 0;
+    // void* cur = start;
+    // while (cur)
+    // {
+    // 	cur = NextObj(cur);
+    // 	++j;
+    // }
+
+    // if (j != actualNum)
+    // {
+    // 	int x = 0;
+    // }
 
     _SpanLists[index]._mtx.unlock();
     return actualNum;
