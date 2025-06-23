@@ -111,19 +111,19 @@ public:
         NextObj(end) = _freeList; // 将这一段内存块 头插
         _freeList = start;
 
-        // // 测试验证+条件断点
-        // int i = 0;
-        // void* cur = start;
-        // while (cur)
-        // {
-        // 	cur = NextObj(cur);
-        // 	++i;
-        // }
+        // 测试验证+条件断点
+        int i = 0;
+        void* cur = start;
+        while (cur)
+        {
+        	cur = NextObj(cur);
+        	++i;
+        }
 
-        // if (n != i)
-        // {
-        // 	int x = 0;
-        // }
+        if (n != i)
+        {
+        	int x = 0;
+        }
 
         _size += n;
     }
@@ -169,7 +169,8 @@ public:
 
     static inline size_t RoundUp(size_t bytes) // 给我你需要的内存大小，返回给你实际开辟的内存大小
     {
-        assert(bytes <= MAX_BYTES);
+        // assert(bytes <= MAX_BYTES);
+
         if (bytes <= 128)
         {
             return _RoundUp(bytes, 8);
@@ -192,7 +193,7 @@ public:
         }
         else
         {
-            return 0;
+            return _RoundUp(bytes, 1 << PAGE_SHIFT);
         }
     }
 

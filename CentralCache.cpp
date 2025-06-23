@@ -33,16 +33,17 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     newspan->_freeList = start;                // 先将整个内存块的 start 给给 _freelist 指针
     start += size;                             // 逻辑上就是将前size个字节切走
     char *tail = (char *)(newspan->_freeList); // 留一个尾 方便尾插
-
-    while (start <= end) // start != end 这是一个BUG
+    while (start < end) // start != end 这是一个BUG
     {
         NextObj(tail) = start;
         tail = (char *)NextObj(tail);
         start += size; // 可能会造成死循环 博客可以记录一下
     }
 
+    NextObj(tail) = nullptr; // 将尾节点的 next 置空 
+
     // // 1、条件断点
-    // // 2、疑似死循环，可以中断程序，程序会在正在运行的地方停下来
+    // // 2、疑似死循环 检查不出越界的 可以中断程序 程序会在正在运行的地方停下来
     // int j = 0;
     // void *cur = newspan->_freeList;
     // while (cur)
@@ -50,7 +51,6 @@ Span *CentralCache::GetOneSpan(SpanList &spanlist, size_t size) // 获取一个�
     //     cur = NextObj(cur);
     //     ++j;
     // }
-
     // if (j != (bytes / size))
     // {
     //     int x = 0;
@@ -88,19 +88,19 @@ size_t CentralCache::FetchRangeObj(void *&start, void *&end, size_t batchNum, si
     NextObj(end) = nullptr;         // 将end的前4/8字节置空
     span->_usecount += actualNum;   // 使用计数加上 actualNum
 
-    // // 条件断点 DEBUG
-    // int j = 0;
-    // void* cur = start;
-    // while (cur)
-    // {
-    // 	cur = NextObj(cur);
-    // 	++j;
-    // }
+    // 条件断点 DEBUG
+    int j = 0;
+    void* cur = start;
+    while (cur)
+    {
+    	cur = NextObj(cur);
+    	++j;
+    }
 
-    // if (j != actualNum)
-    // {
-    // 	int x = 0;
-    // }
+    if (j != actualNum)
+    {
+    	int x = 0;
+    }
 
     _SpanLists[index]._mtx.unlock();
     return actualNum;

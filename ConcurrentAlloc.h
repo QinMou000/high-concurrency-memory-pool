@@ -3,6 +3,7 @@
 #include "Common.h"
 #include "ThreadCache.h"
 #include "PageCache.h"
+#include "ObjectPool.h"
 #include <thread>
 
 void *ConcurrentAlloc(size_t size) // Concurrent:并发
@@ -30,7 +31,9 @@ void *ConcurrentAlloc(size_t size) // Concurrent:并发
         // 2、当申请的字节数 小于 128 页
         if (pTLSThreadCache == nullptr) // 第一次过来为空，就new一个新的对象
         {
-            pTLSThreadCache = new ThreadCache;
+            // pTLSThreadCache = new ThreadCache;
+            static ObjectPool<ThreadCache> ThreadCachePool; // 全局唯一的一个 ThreadCache 对象内存池
+            pTLSThreadCache = ThreadCachePool.New();
         }
         // cout << std::this_thread::get_id() << ":" << pTLSThreadCache << endl;
         return pTLSThreadCache->Alloc(size); // 调用ThreadCache的Alloc

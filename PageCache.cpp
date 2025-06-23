@@ -10,7 +10,8 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
     if (K >= NPAGES) // 一般都不会走到这一步的 128 页 相当于 1MB 很少有一次申请 1MB 的
     {
         void *ptr = SysAlloc(K); // 向堆申请内存
-        Span *span = new Span;
+        // Span *span = new Span;
+        Span *span = _SpanPool.New();
         span->_pageId = ((PAGE_ID)ptr >> PAGE_SHIFT);
         span->_n = K;
         _idSpanMap[span->_pageId] = span; // 只需建立 起始页 与 span 的映射即可
@@ -31,7 +32,8 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
         if (!_spanLists[i].Empty()) // 如果第i个桶不为空
         {
             Span *nspan = _spanLists[i].PopFront();
-            Span *kspan = new Span;
+            // Span *kspan = new Span;
+            Span *kspan = _SpanPool.New();
 
             // 对 nspan 进行切分
             kspan->_pageId = nspan->_pageId;
@@ -54,7 +56,9 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
     // 向堆获取
     // 向系统申请 NPAGES - 1 页的内存 并将它挂到最后一个桶里面
     void *ptr = SysAlloc(NPAGES - 1); // 向系统申请
-    Span *BigSpan = new Span;
+    // Span *BigSpan = new Span;
+    Span *BigSpan = _SpanPool.New();
+
     BigSpan->_pageId = (PAGE_ID)ptr >> PAGE_SHIFT; // 初始化 页号
     BigSpan->_n = NPAGES - 1;                      // 初始化页数
 
@@ -67,6 +71,9 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
 Span *PageCache::MapObjectToSpan(void *obj)
 {
     PAGE_ID id = ((size_t)obj >> PAGE_SHIFT);
+    // 在对 _idSpanMap 读写操作时都需要 加锁
+    std::unique_lock<std::mutex> _lock(_pageMutex); // RAII 风格 出了作用域 自动解锁
+
     auto it = _idSpanMap.find(id);
     if (it != _idSpanMap.end()) // 找到了
         return it->second;
@@ -82,7 +89,8 @@ void PageCache::ReleaseSpanToPageCache(Span *span)
     {
         void *ptr = (void *)(span->_pageId << PAGE_SHIFT); // 计算内存块起始地址
         SysFree(ptr);                                      // 归还系统
-        delete span;                                       // 删除对象
+        // delete span;                                    // 删除对象
+        _SpanPool.Delete(span); // 删除对象
         return;
     }
 
@@ -103,7 +111,8 @@ void PageCache::ReleaseSpanToPageCache(Span *span)
         span->_n += prevSpan->_n;
 
         _spanLists[prevSpan->_n].Erase(prevSpan); // 将 prevSpan 从桶中删除
-        delete prevSpan;                          // 释放对象 注意这里不是释放内存
+        // delete prevSpan;                          // 释放对象 注意这里不是释放内存
+        _SpanPool.Delete(prevSpan); // 释放对象 注意这里不是释放内存
     }
     // 向后和并
     while (1)
@@ -121,7 +130,8 @@ void PageCache::ReleaseSpanToPageCache(Span *span)
         span->_n += nextSpan->_n;
 
         _spanLists[nextSpan->_n].Erase(nextSpan); // 将 nextSpan 从桶中删除
-        delete nextSpan;                          // 释放对象 注意这里不是释放内存
+        // delete nextSpan;                          // 释放对象 注意这里不是释放内存
+        _SpanPool.Delete(nextSpan); // 释放对象 注意这里不是释放内存
     }
 
     // 将新 Span 插入

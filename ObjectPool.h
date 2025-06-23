@@ -19,7 +19,7 @@ public:
         {
             if (_remainByte < sizeof(T)) // 如果剩余内存大小已经小于T所需内存大小，剩下的就不要了，直接重开一块内存
             {
-                _remainByte = 8 * 1024; // 8KB
+                _remainByte = 128 * 1024; // 128KB
                 // _memory = (char *)malloc(_remainByte);
                 _memory = (char *)SysAlloc(_remainByte >> 13);
                 if (_memory == nullptr)
@@ -55,64 +55,64 @@ private:
     void *_freeList = nullptr; // 回收链表
 };
 
-struct TreeNode
-{
-    int _val;
-    TreeNode *_left;
-    TreeNode *_right;
+// struct TreeNode
+// {
+//     int _val;
+//     TreeNode *_left;
+//     TreeNode *_right;
 
-    TreeNode()
-        : _val(0), _left(nullptr), _right(nullptr)
-    {
-    }
-};
+//     TreeNode()
+//         : _val(0), _left(nullptr), _right(nullptr)
+//     {
+//     }
+// };
 
-void TestObjectPool()
-{
-    // 申请释放的轮次
-    const size_t Rounds = 5;
+// void TestObjectPool()
+// {
+//     // 申请释放的轮次
+//     const size_t Rounds = 5;
 
-    // 每轮申请释放多少次
-    const size_t N = 1000000;
+//     // 每轮申请释放多少次
+//     const size_t N = 1000000;
 
-    std::vector<TreeNode *> v1;
-    v1.reserve(N);
+//     std::vector<TreeNode *> v1;
+//     v1.reserve(N);
 
-    size_t begin1 = clock();
-    for (size_t j = 0; j < Rounds; ++j)
-    {
-        for (int i = 0; i < N; ++i)
-        {
-            v1.push_back(new TreeNode);
-        }
-        for (int i = 0; i < N; ++i)
-        {
-            delete v1[i];
-        }
-        v1.clear();
-    }
+//     size_t begin1 = clock();
+//     for (size_t j = 0; j < Rounds; ++j)
+//     {
+//         for (int i = 0; i < N; ++i)
+//         {
+//             v1.push_back(new TreeNode);
+//         }
+//         for (int i = 0; i < N; ++i)
+//         {
+//             delete v1[i];
+//         }
+//         v1.clear();
+//     }
 
-    size_t end1 = clock();
+//     size_t end1 = clock();
 
-    std::vector<TreeNode *> v2;
-    v2.reserve(N);
+//     std::vector<TreeNode *> v2;
+//     v2.reserve(N);
 
-    ObjectPool<TreeNode> TNPool;
-    size_t begin2 = clock();
-    for (size_t j = 0; j < Rounds; ++j)
-    {
-        for (int i = 0; i < N; ++i)
-        {
-            v2.push_back(TNPool.New());
-        }
-        for (int i = 0; i < N; ++i)
-        {
-            TNPool.Delete(v2[i]);
-        }
-        v2.clear();
-    }
-    size_t end2 = clock();
+//     ObjectPool<TreeNode> TNPool;
+//     size_t begin2 = clock();
+//     for (size_t j = 0; j < Rounds; ++j)
+//     {
+//         for (int i = 0; i < N; ++i)
+//         {
+//             v2.push_back(TNPool.New());
+//         }
+//         for (int i = 0; i < N; ++i)
+//         {
+//             TNPool.Delete(v2[i]);
+//         }
+//         v2.clear();
+//     }
+//     size_t end2 = clock();
 
-    cout << "new cost time:" << end1 - begin1 << endl;
-    cout << "object pool cost time:" << end2 - begin2 << endl;
-}
+//     cout << "new cost time:" << end1 - begin1 << endl;
+//     cout << "object pool cost time:" << end2 - begin2 << endl;
+// }
