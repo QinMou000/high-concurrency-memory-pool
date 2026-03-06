@@ -150,7 +150,7 @@ int main()
     cout << "==========================================================" << endl;
 
     void *ptr;
-    cout << sizeof(ptr) << endl;  
+    cout << sizeof(ptr) << endl;
 
     return 0;
 }

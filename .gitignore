@@ -38,3 +38,5 @@
 
 # Json files
 *.json
+
+/build-mingw/
