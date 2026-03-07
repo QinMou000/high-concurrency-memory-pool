@@ -16,43 +16,58 @@ using std::endl;
 #ifdef _WIN32
 #include <windows.h>
 #else
-
+#include <unistd.h>
+#include <sys/mman.h>
 #endif
 
 static const size_t MAX_LIST = 208;
 static const size_t MAX_BYTES = 256 * 1024;
 static const size_t NPAGES = 129;
+#ifdef _WIN32
 static const size_t PAGE_SHIFT = 13; // 2^13 = 8 * 1024 -- 8K
+#else
+static const size_t PAGE_SHIFT = 12; // 2^12 = 4 * 1024 -- 4K
+#endif
+// Linux 页对齐假设错误
+// 代码把 PAGE_SHIFT 固定为 13（8KB）
+// 但 Linux mmap 常见是 4KB 对齐
+// 导致 ptr >> 13 << 13 可能回退到映射区之前地址
+// 后续写入随机崩溃
 
 #ifdef _WIN64
 typedef unsigned long long PAGE_ID;
 #elif _WIN32
 typedef size_t PAGE_ID;
 #else
-// Linux TODO
+typedef unsigned long long PAGE_ID;
 #endif // _WIN32
 
 static void *SysAlloc(size_t kpage)
 {
+    void *ptr = nullptr;
 #if defined(_WIN32)
     // WIN32
-    void *ptr = VirtualAlloc(0, kpage << 13, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    ptr = VirtualAlloc(0, kpage << PAGE_SHIFT, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 #else
     // Linux
-    // ...
+    ptr = mmap(0, kpage << PAGE_SHIFT, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED)
+        ptr = nullptr;
 #endif
 
-    if (ptr == nullptr)
+    if (ptr == nullptr) {
+        // fprintf(stderr, "SysAlloc failed\n");
         exit(-1);
+    }
     return ptr;
 }
 
-static void SysFree(void *ptr)
+static void SysFree(void *ptr, size_t kpage)
 {
 #ifdef _WIN32
     VirtualFree(ptr, 0, MEM_RELEASE);
 #else
-    // sbrk unmmap等
+    munmap(ptr, kpage << PAGE_SHIFT);
 #endif
 }
 
@@ -111,19 +126,19 @@ public:
         NextObj(end) = _freeList; // 将这一段内存块 头插
         _freeList = start;
 
-        // 测试验证+条件断点
-        int i = 0;
-        void* cur = start;
-        while (cur)
-        {
-        	cur = NextObj(cur);
-        	++i;
-        }
+        // // 测试验证+条件断点
+        // int i = 0;
+        // void* cur = start;
+        // while (cur)
+        // {
+        // 	cur = NextObj(cur);
+        // 	++i;
+        // }
 
-        if (n != i)
-        {
-        	int x = 0;
-        }
+        // if (n != i)
+        // {
+        // 	int x = 0;
+        // }
 
         _size += n;
     }

@@ -141,12 +141,16 @@ void BenchmarkMalloc(size_t ntimes, size_t nworks, size_t rounds)
 }
 int main()
 {
-    size_t n = 10000;
+    // void BenchmarkMalloc(size_t ntimes, size_t nworks, size_t rounds)
+    // ntimes : 每轮次申请和释放内存的次数
+    // nworks : 线程数
+    // rounds : 轮次
+    size_t n = 100000;
     cout << "==========================================================" << endl;
-    BenchmarkConcurrentMalloc(n, 4, 10);
+    BenchmarkConcurrentMalloc(n, 10, 10);
     cout << endl;
 
-    BenchmarkMalloc(n, 4, 10);
+    BenchmarkMalloc(n, 10, 10);
     cout << "==========================================================" << endl;
 
     void *ptr;

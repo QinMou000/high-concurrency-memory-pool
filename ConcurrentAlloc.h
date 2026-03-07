@@ -32,8 +32,9 @@ void *ConcurrentAlloc(size_t size) // Concurrent:并发
         if (pTLSThreadCache == nullptr) // 第一次过来为空，就new一个新的对象
         {
             // pTLSThreadCache = new ThreadCache;
-            static ObjectPool<ThreadCache> ThreadCachePool; // 全局唯一的一个 ThreadCache 对象内存池
-            pTLSThreadCache = ThreadCachePool.New();
+            // static ObjectPool<ThreadCache> ThreadCachePool; // 全局唯一的一个 ThreadCache 对象内存池
+            // pTLSThreadCache = ThreadCachePool.New(); // 由 ObjectPool 管理 ThreadCache 的生命周期
+            pTLSThreadCache = new ThreadCache;
         }
         // cout << std::this_thread::get_id() << ":" << pTLSThreadCache << endl;
         return pTLSThreadCache->Alloc(size); // 调用ThreadCache的Alloc

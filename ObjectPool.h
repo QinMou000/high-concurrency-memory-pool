@@ -21,7 +21,7 @@ public:
             {
                 _remainByte = 128 * 1024; // 128KB
                 // _memory = (char *)malloc(_remainByte);
-                _memory = (char *)SysAlloc(_remainByte >> 13);
+                _memory = (char *)SysAlloc(_remainByte >> PAGE_SHIFT);
                 if (_memory == nullptr)
                     throw std::bad_alloc(); // 抛出一个对象
             }

@@ -17,8 +17,10 @@ add_executable(benchmark
 target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(benchmark PRIVATE Threads::Threads)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(benchmark PRIVATE
-        -finput-charset=UTF-8
-        -fexec-charset=GBK
-    )
+    target_compile_options(benchmark PRIVATE -finput-charset=UTF-8)
+    if (WIN32)
+        target_compile_options(benchmark PRIVATE -fexec-charset=GBK)
+    else()
+        target_compile_options(benchmark PRIVATE -fexec-charset=UTF-8)
+    endif()
 endif()

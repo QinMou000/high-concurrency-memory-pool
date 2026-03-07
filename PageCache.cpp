@@ -63,6 +63,10 @@ Span *PageCache::NewSpan(size_t K) // 获取一个有K页空间的span
     BigSpan->_n = NPAGES - 1;                      // 初始化页数
 
     _spanLists[BigSpan->_n].PushFront(BigSpan); // 将BigSpan插入最后一个桶
+    
+    // 建立大Span的映射，以便能够合并
+    _idSpanMap[BigSpan->_pageId] = BigSpan;
+    _idSpanMap[BigSpan->_pageId + BigSpan->_n - 1] = BigSpan;
 
     // 这里设计得很巧妙
     return NewSpan(K); // 递归再调一次 这里的循环判断消耗很小 不用考虑性能问题
@@ -88,7 +92,7 @@ void PageCache::ReleaseSpanToPageCache(Span *span)
     if (span->_n >= NPAGES) // 如果大于 129 页
     {
         void *ptr = (void *)(span->_pageId << PAGE_SHIFT); // 计算内存块起始地址
-        SysFree(ptr);                                      // 归还系统
+        SysFree(ptr, span->_n);                                      // 归还系统
         // delete span;                                    // 删除对象
         _SpanPool.Delete(span); // 删除对象
         return;
